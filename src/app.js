@@ -1,4 +1,6 @@
 const express = require('express');
+const apiCredentials = require('./middlewares/apiCredentials');
+require('express-async-errors');
 
 const app = express();
 
@@ -9,6 +11,7 @@ const teams = [
 ];
 
 app.use(express.json());
+app.use(apiCredentials);
 
 app.get('/teams', (req, res) => res.json(teams));
 
@@ -23,16 +26,19 @@ app.get('/teams/:id', (req, res) => {
 });
 
 const validateTeam = (req, res, next) => {
-  const requiredProperties = ['nome', 'sigla'];
-  if (requiredProperties.every((property) => property in req.body)) {
-    next();
-  } else {
-    res.sendStatus(400);
-  }
+  const { nome, sigla } = req.body;
+  if (!nome) return res.status(400).json({ message: 'O campo "nome" é obrigatório' });
+  if (!sigla) return res.status(400).json({ message: 'O campo "sigla" é obrigatório' });
+  next();
 };
 
 app.post('/teams', validateTeam, (req, res) => {
   const team = { id: nextId, ...req.body };
+  if (!req.teams.teams.includes(req.body.sigla)
+    && teams.every((t) => t.sigla !== req.body.sigla)
+  ) {
+    return res.status(422).json({ message: 'Já existe um time com essa sigla' });
+  }
   teams.push(team);
   nextId += 1;
   res.status(201).json(team);
